@@ -5,6 +5,7 @@ module spectral_transforms
  use mpi_wrapper, only : mp_alltoall,mype,npes
  use stochy_internal_state_mod, only : stochy_internal_state
  use stochy_namelist_def
+ use indexing_utils, only : indlsev, indlsod
 
       private 
       public :: spec_to_four, four_to_grid,dozeuv_stochy,dezouv_stochy
@@ -62,7 +63,7 @@ module spectral_transforms
 !    local scalars
 !    -------------
 !
-      integer              j, l, lat, lat1, n, kn, n2,indev,indod
+      integer              j, l, lat, lat1, n, kn, n2,indev,indod, jbasev, jbasod
 !
 !    local arrays
 !    ------------
@@ -88,10 +89,6 @@ module spectral_transforms
 !    statement functions
 !    -------------------
 !
-      integer              indlsev, jbasev, indlsod, jbasod
-!
-      include 'function_indlsev'
-      include 'function_indlsod'
 !
       real(kind=kind_dbl_prec), parameter ::  cons0=0.0d0, cons1=1.0d0
 !
@@ -107,8 +104,8 @@ module spectral_transforms
         jbasev = ls_node(j,2)
         jbasod = ls_node(j,3)
 
-        indev  = indlsev(l,l)
-        indod  = indlsod(l+1,l)
+        indev  = indlsev(l,l,jbasev)
+        indod  = indlsod(l+1,l,jbasod)
 !
         lat1 = lat1s_a(l)
 
@@ -932,13 +929,10 @@ module spectral_transforms
       integer              indev,indev1,indev2
       integer              indod,indod1,indod2
       integer              inddif
+      integer              jbasev, jbasod
       real(kind_dbl_prec) rl
       real(kind_dbl_prec) cons0     !constant
-      integer              indlsev,jbasev
-      integer              indlsod,jbasod
       real(kind_dbl_prec)  rerth
-
-      include 'function2'
 
 
 !......................................................................
@@ -948,21 +942,21 @@ module spectral_transforms
       do locl=1,ls_max_node
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
-         vev(indlsev(l,l),1) = cons0     !constant
-         vev(indlsev(l,l),2) = cons0     !constant
+         vev(indlsev(l,l,jbasev),1) = cons0     !constant
+         vev(indlsev(l,l,jbasev),2) = cons0     !constant
       enddo
 !......................................................................
       do locl=1,ls_max_node
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L)
+         indev1 = indlsev(L,L,jbasev)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap-1,L)
+            indev2 = indlsev(jcap-1,L,jbasev)
          else
-            indev2 = indlsev(jcap  ,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
          endif
-         indod1 = indlsod(l+1,l)
+         indod1 = indlsod(l+1,l,jbasod)
          inddif = indev1 - indod1
          do indev = indev1 , indev2
             uod(indev-inddif,1) = -epsodn(indev-inddif) * zev(indev,1)
@@ -974,13 +968,13 @@ module spectral_transforms
           l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L) + 1
+         indev1 = indlsev(L,L,jbasev) + 1
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap+1,L)
+            indev2 = indlsev(jcap+1,L,jbasev)
          else
-            indev2 = indlsev(jcap  ,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
          endif
-         indod1 = indlsod(l+1,l)
+         indod1 = indlsod(l+1,l,jbasod)
          inddif = indev1 - indod1
          do indev = indev1 , indev2
             vev(indev,1) = epsedn(indev) * dod(indev-inddif,1)
@@ -992,11 +986,11 @@ module spectral_transforms
       do locl=1,ls_max_node
          l=ls_node(locl,1)
          jbasod=ls_node(locl,3)
-         indod1 = indlsod(L+1,L)
+         indod1 = indlsod(L+1,L,jbasod)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indod2 = indlsod(jcap  ,L)
+            indod2 = indlsod(jcap  ,L,jbasod)
          else
-            indod2 = indlsod(jcap+1,L) - 1
+            indod2 = indlsod(jcap+1,L,jbasod) - 1
          endif
          if ( l .ge. 1 ) then
               rl = l
@@ -1011,11 +1005,11 @@ module spectral_transforms
       do locl=1,ls_max_node
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
-         indev1 = indlsev(L,L)
+         indev1 = indlsev(L,L,jbasev)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap-1,L)
+            indev2 = indlsev(jcap-1,L,jbasev)
          else
-            indev2 = indlsev(jcap  ,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
          endif
          if ( l .ge. 1 ) then
               rl = l
@@ -1031,13 +1025,13 @@ module spectral_transforms
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L) + 1
+         indev1 = indlsev(L,L,jbasev) + 1
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap-1,L)
+            indev2 = indlsev(jcap-1,L,jbasev)
          else
-            indev2 = indlsev(jcap  ,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
          endif
-         indod1 = indlsod(l+1,l)
+         indod1 = indlsod(l+1,l,jbasod)
          inddif = indev1 - indod1
          do indev = indev1 , indev2
             uod(indev-inddif,1) = uod(indev-inddif,1) + epsedn(indev) * zev(indev,1)
@@ -1049,13 +1043,13 @@ module spectral_transforms
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L)
+         indev1 = indlsev(L,L,jbasev)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap+1,L) - 1
+            indev2 = indlsev(jcap+1,L,jbasev) - 1
          else
-            indev2 = indlsev(jcap  ,L) - 1
+            indev2 = indlsev(jcap  ,L,jbasev) - 1
          endif
-         indod1 = indlsod(l+1,l)
+         indod1 = indlsod(l+1,l,jbasod)
          inddif = indev1 - indod1
          do indev = indev1 , indev2
              vev(indev,1) = vev(indev,1) - epsodn(indev-inddif) * dod(indev-inddif,1)
@@ -1067,14 +1061,14 @@ module spectral_transforms
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L)
-         indod1 = indlsod(L+1,L)
+         indev1 = indlsev(L,L,jbasev)
+         indod1 = indlsod(L+1,L,jbasod)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap+1,L)
-            indod2 = indlsod(jcap  ,L)
+            indev2 = indlsev(jcap+1,L,jbasev)
+            indod2 = indlsod(jcap  ,L,jbasod)
          else
-            indev2 = indlsev(jcap  ,L)
-            indod2 = indlsod(jcap+1,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
+            indod2 = indlsod(jcap+1,L,jbasod)
          endif
          do indod = indod1 , indod2
             uod(indod,1) = uod(indod,1) * rerth
@@ -1114,15 +1108,13 @@ module spectral_transforms
       integer              indev,indev1,indev2
       integer              indod,indod1,indod2
       integer              inddif
+      integer              jbasev, jbasod
 
       real(kind_dbl_prec) rl
       real(kind_dbl_prec) cons0     !constant
 
-      integer              indlsev,jbasev
-      integer              indlsod,jbasod
       real(kind_dbl_prec)  rerth
 
-      include 'function2'
 !......................................................................
       cons0 = 0.d0     !constant
       rerth  =6.3712e+6      ! radius of earth (m)
@@ -1130,8 +1122,8 @@ module spectral_transforms
       do locl=1,ls_max_node
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
-         uev(indlsev(l,l),1) = cons0     !constant
-         uev(indlsev(l,l),2) = cons0     !constant
+         uev(indlsev(l,l,jbasev),1) = cons0     !constant
+         uev(indlsev(l,l,jbasev),2) = cons0     !constant
       enddo
 
 !......................................................................
@@ -1140,13 +1132,13 @@ module spectral_transforms
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L) + 1
+         indev1 = indlsev(L,L,jbasev) + 1
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap+1,L)
+            indev2 = indlsev(jcap+1,L,jbasev)
          else
-            indev2 = indlsev(jcap  ,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
          endif
-         indod1 = indlsod(l+1,l)
+         indod1 = indlsod(l+1,l,jbasod)
          inddif = indev1 - indod1
          do indev = indev1 , indev2
             uev(indev,1) = -epsedn(indev) * zod(indev-inddif,1)
@@ -1158,13 +1150,13 @@ module spectral_transforms
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L)
+         indev1 = indlsev(L,L,jbasev)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap-1,L)
+            indev2 = indlsev(jcap-1,L,jbasev)
          else
-            indev2 = indlsev(jcap  ,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
          endif
-         indod1 = indlsod(l+1,l)
+         indod1 = indlsod(l+1,l,jbasod)
          inddif = indev1 - indod1
 
          do indev = indev1 , indev2
@@ -1178,11 +1170,11 @@ module spectral_transforms
       do locl=1,ls_max_node
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
-         indev1 = indlsev(L,L)
+         indev1 = indlsev(L,L,jbasev)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap-1,L)
+            indev2 = indlsev(jcap-1,L,jbasev)
          else
-            indev2 = indlsev(jcap  ,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
          endif
          if ( l .ge. 1 ) then
               rl = l
@@ -1198,11 +1190,11 @@ module spectral_transforms
       do locl=1,ls_max_node
          l=ls_node(locl,1)
          jbasod=ls_node(locl,3)
-         indod1 = indlsod(L+1,L)
+         indod1 = indlsod(L+1,L,jbasod)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indod2 = indlsod(jcap  ,L)
+            indod2 = indlsod(jcap  ,L,jbasod)
          else
-            indod2 = indlsod(jcap+1,L) - 1
+            indod2 = indlsod(jcap+1,L,jbasod) - 1
          endif
          if ( l .ge. 1 ) then
               rl = l
@@ -1219,13 +1211,13 @@ module spectral_transforms
          l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L)
+         indev1 = indlsev(L,L,jbasev)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap+1,L) - 1
+            indev2 = indlsev(jcap+1,L,jbasev) - 1
          else
-            indev2 = indlsev(jcap  ,L) - 1
+            indev2 = indlsev(jcap  ,L,jbasev) - 1
          endif
-         indod1 = indlsod(l+1,l)
+         indod1 = indlsod(l+1,l,jbasod)
          inddif = indev1 - indod1
 
          do indev = indev1 , indev2
@@ -1238,13 +1230,13 @@ module spectral_transforms
               l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L) + 1
+         indev1 = indlsev(L,L,jbasev) + 1
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap-1,L)
+            indev2 = indlsev(jcap-1,L,jbasev)
          else
-            indev2 = indlsev(jcap  ,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
          endif
-         indod1 = indlsod(l+1,l)
+         indod1 = indlsod(l+1,l,jbasod)
          inddif = indev1 - indod1
          do indev = indev1 , indev2
                  vod(indev-inddif,1) = vod(indev-inddif,1) - epsedn(indev) * dev(indev, 1)
@@ -1256,14 +1248,14 @@ module spectral_transforms
               l=ls_node(locl,1)
          jbasev=ls_node(locl,2)
          jbasod=ls_node(locl,3)
-         indev1 = indlsev(L,L)
-         indod1 = indlsod(L+1,L)
+         indev1 = indlsev(L,L,jbasev)
+         indod1 = indlsod(L+1,L,jbasod)
          if (mod(L,2).eq.mod(jcap+1,2)) then
-            indev2 = indlsev(jcap+1,L)
-            indod2 = indlsod(jcap  ,L)
+            indev2 = indlsev(jcap+1,L,jbasev)
+            indod2 = indlsod(jcap  ,L,jbasod)
          else
-            indev2 = indlsev(jcap  ,L)
-            indod2 = indlsod(jcap+1,L)
+            indev2 = indlsev(jcap  ,L,jbasev)
+            indod2 = indlsod(jcap+1,L,jbasod)
          endif
          do indev = indev1 , indev2
             uev(indev,1) = uev(indev,1) * rerth
@@ -1661,12 +1653,12 @@ module spectral_transforms
 !
       type(stochy_internal_state), intent(inout) :: gis_stochy
 !
-      integer       locl,node, indev, indod, indlsev,jbasev,indlsod,jbasod
+      integer       locl,node, indev, indod
+      integer        jbasev, jbasod
 !
       integer gl_lats_index
       integer global_time_sort_index_a(latg)
 !
-      include 'function2'
 !
       real(kind=kind_dbl_prec), parameter :: cons0 = 0.d0, cons0p5  = 0.5d0,&
                                          cons1 = 1.d0, cons0p92 = 0.92d0
@@ -1707,7 +1699,7 @@ module spectral_transforms
       do locl=1,ls_max_node
          l = gis_stochy%ls_node(locl,1)
          jbasev = gis_stochy%ls_node(locl,2)
-         indev  = indlsev(l,l)
+         indev  = indlsev(l,l,jbasev)
          do n = l, jcap, 2
             gis_stochy%snnp1ev(indev) = n*(n+1)
             indev                     = indev+1
@@ -1718,7 +1710,7 @@ module spectral_transforms
          l = gis_stochy%ls_node(locl,1)
          jbasod = gis_stochy%ls_node(locl,3)
          if ( l <= jcap-1 ) then
-            indod = indlsod(l+1,l)
+            indod = indlsod(l+1,l,jbasod)
             do n = l+1, jcap, 2
                gis_stochy%snnp1od(indod) = n*(n+1)
                indod                     = indod+1
@@ -1732,9 +1724,9 @@ module spectral_transforms
          jbasev = gis_stochy%ls_node(locl,2)
          jbasod = gis_stochy%ls_node(locl,3)
          if (mod(L,2) == mod(jcap+1,2)) then ! set even (n-l) terms of top row to zero
-            gis_stochy%snnp1ev(indlsev(jcap+1,l)) = cons0
+            gis_stochy%snnp1ev(indlsev(jcap+1,l,jbasev)) = cons0
          else                                ! set odd (n-l) terms of top row to zero
-            gis_stochy%snnp1od(indlsod(jcap+1,l)) = cons0
+            gis_stochy%snnp1od(indlsod(jcap+1,l,jbasod)) = cons0
          endif
       enddo
 !
@@ -1822,17 +1814,13 @@ module spectral_transforms
       integer                  indev,indev1,indev2
       integer                  indod,indod1,indod2
       integer                  inddif
+      integer                  jbasev, jbasod
 
       real(kind=kind_dbl_prec) rn,rnp1,wcsa
 
       real(kind=kind_dbl_prec) cons0     !constant
       real(kind=kind_dbl_prec) cons2     !constant
       real(kind_dbl_prec)  rerth
-
-      integer                  indlsev,jbasev
-      integer                  indlsod,jbasod
-
-      include 'function2'
 
 
       cons0 = 0.d0     !constant
@@ -1848,14 +1836,14 @@ module spectral_transforms
                  l=gis_stochy%ls_node(locl,1)
             jbasev=gis_stochy%ls_node(locl,2)
             jbasod=gis_stochy%ls_node(locl,3)
-            indev1 = indlsev(L,L)
-            indod1 = indlsod(L+1,L)
+            indev1 = indlsev(L,L,jbasev)
+            indod1 = indlsod(L+1,L,jbasod)
             if (mod(L,2).eq.mod(jcap+1,2)) then
-               indev2 = indlsev(jcap+1,L)
-               indod2 = indlsod(jcap  ,L)
+               indev2 = indlsev(jcap+1,L,jbasev)
+               indod2 = indlsod(jcap  ,L,jbasod)
             else
-               indev2 = indlsev(jcap  ,L)
-               indod2 = indlsod(jcap+1,L)
+               indev2 = indlsev(jcap  ,L,jbasev)
+               indod2 = indlsod(jcap+1,L,jbasod)
             endif
             do indev = indev1 , indev2
                gis_stochy%plnew_a(indev,lat) = gis_stochy%plnev_a(indev,lat) * wgt_a(lat)
@@ -2099,6 +2087,7 @@ module spectral_transforms
       integer                  l,lat,locl,max_l,n
       integer                  indev
       integer                  indod
+      integer                  jbasev, jbasod
 ! need index for alp to be x-number
       integer                  id, ialp1, ialp2, ialp3, iprod
       integer                  ialp10(0:jcap)
@@ -2108,10 +2097,6 @@ module spectral_transforms
       real(kind=kind_dbl_prec) cos2,fl,prod,sinlat,coslat
       real(kind=kind_dbl_prec) alp10(0:jcap)
       real(kind=kind_dbl_prec) cons0,cons0p5,cons1,cons2,cons3    !constant
-      integer                  indlsev,jbasev
-      integer                  indlsod,jbasod
-
-      include 'function2'
 
       cons0=0.0d0       !constant
       cons0p5=0.5d0     !constant
@@ -2168,8 +2153,8 @@ module spectral_transforms
             alp1=alp10(l)
             ialp1=ialp10(l)
 
-            indev=indlsev(n  ,l)
-            indod=indlsod(n+1,l)
+            indev=indlsev(n  ,l,jbasev)
+            indod=indlsod(n+1,l,jbasod)
 ! x2f start
             if( ialp1.eq.0 ) then
               gis_stochy%plnev_a(indev     ,lat)=alp1
@@ -2343,15 +2328,12 @@ module spectral_transforms
 
       integer                  indev
       integer                  indod
+      integer                  jbasev, jbasod
 
       real(kind_dbl_prec) f1,f2,rn,val
 
       real(kind_dbl_prec) cons0     !constant
 
-      integer                  indlsev,jbasev
-      integer                  indlsod,jbasod
-
-      include 'function2'
 
       cons0=0.0d0     !constant
 !c
@@ -2360,7 +2342,7 @@ module spectral_transforms
       do locl=1,ls_max_node
               l=gis_stochy%ls_node(locl,1)
          jbasev=gis_stochy%ls_node(locl,2)
-         indev=indlsev(l,l)
+         indev=indlsev(l,l,jbasev)
          gis_stochy%epse  (indev)=cons0     !constant
          gis_stochy%epsedn(indev)=cons0     !constant
           indev=indev+1
@@ -2378,7 +2360,7 @@ module spectral_transforms
       do locl=1,ls_max_node
               l=gis_stochy%ls_node(locl,1)
          jbasod=gis_stochy%ls_node(locl,3)
-         indod=indlsod(l+1,l)
+         indod=indlsod(l+1,l,jbasod)
 
          do n=l+1,jcap+1,2
             rn=n

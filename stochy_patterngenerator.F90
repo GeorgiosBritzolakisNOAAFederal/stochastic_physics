@@ -12,6 +12,7 @@ module stochy_patterngenerator_mod
  use mersenne_twister, only: random_setseed,random_gauss,random_stat
  ! DH* replacing this with mpi_wrapper changes results - look for value of iseed?
  use mpi_wrapper,only: is_rootpe, mp_bcst
+ use indexing_utils, only : indlsev, indlsod
  ! *DH
  implicit none
  private
@@ -65,11 +66,9 @@ module stochy_patterngenerator_mod
    integer(8) count, count_rate, count_max, count_trunc
    integer(8) :: iscale = 10000000000_8
    integer count4, ierr
+   integer jbasev, jbasod
    logical :: bn_local ! berner normalization
 !   integer  member_id
-   integer indlsod,indlsev,jbasev,jbasod
-   include 'function_indlsod'
-   include 'function_indlsev'
    bn_local=.false.
    if (present(bn)) bn_local=bn
    if (is_rootpe()) then
@@ -112,14 +111,14 @@ module stochy_patterngenerator_mod
          l=ls_nodes(j,1) ! zonal wavenumber
          jbasev=ls_nodes(j,2)
          jbasod=ls_nodes(j,3)
-         indev1 = indlsev(l,l)
-         indod1 = indlsod(l+1,l)
+         indev1 = indlsev(l,l,jbasev)
+         indod1 = indlsod(l+1,l,jbasod)
          if (mod(l,2) .eq. mod(ntrunc+1,2)) then
-            indev2 = indlsev(ntrunc+1,l)
-            indod2 = indlsod(ntrunc  ,l)
+            indev2 = indlsev(ntrunc+1,l,jbasev)
+            indod2 = indlsod(ntrunc  ,l,jbasod)
          else
-            indev2 = indlsev(ntrunc  ,l)
-            indod2 = indlsod(ntrunc+1,l)
+            indev2 = indlsev(ntrunc  ,l,jbasev)
+            indod2 = indlsod(ntrunc+1,l,jbasod)
          endif
          n = l ! degree
          do nn=indev1,indev2

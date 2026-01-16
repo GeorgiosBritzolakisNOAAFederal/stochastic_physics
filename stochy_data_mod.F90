@@ -18,6 +18,7 @@ module stochy_data_mod
  use compns_stochy_mod, only : compns_stochy
 
  use kinddef, only: kind_phys, kind_dbl_prec
+ use indexing_utils, only : indlsev, indlsod
 
  implicit none
  private
@@ -64,12 +65,10 @@ module stochy_data_mod
 
    real :: rnn1,gamma_sum
    integer :: nn,k,nm,stochlun,ierr,n
-   integer :: locl,indev,indod,indlsod,indlsev
-   integer :: l,jbasev,jbasod
+   integer :: locl,indev,indod
+   integer :: l
    integer :: jcapin,varid1,varid2
    real(kind_dbl_prec),allocatable :: noise_e(:,:),noise_o(:,:)
-   include 'function_indlsod'
-   include 'function_indlsev'
    include 'netcdf.inc'
    stochlun=99
    levs=nlevs
@@ -311,9 +310,9 @@ module stochy_data_mod
        do locl=1,ls_max_node
            l = gis_stochy%ls_node(locl,1)
            jbasev = gis_stochy%ls_node(locl,2)
-           indev = indlsev(l,l)
+           indev = indlsev(l,l,jbasev)
            jbasod = gis_stochy%ls_node(locl,3)
-           indod = indlsod(l+1,l)
+           indod = indlsod(l+1,l,jbasod)
            do n=l,jcap,2
               rnn1 = n*(n+1.)
               gis_stochy%kenorm_e(indev) = rnn1/radius**2
@@ -331,9 +330,9 @@ module stochy_data_mod
        do locl=1,ls_max_node
            l = gis_stochy%ls_node(locl,1)
            jbasev = gis_stochy%ls_node(locl,2)
-           indev = indlsev(l,l)
+           indev = indlsev(l,l,jbasev)
            jbasod = gis_stochy%ls_node(locl,3)
-           indod = indlsod(l+1,l)
+           indod = indlsod(l+1,l,jbasod)
            do n=l,jcap,2
               rnn1 = n*(n+1.)
               gis_stochy%kenorm_e(indev) = sqrt(rnn1)/radius
@@ -353,10 +352,10 @@ module stochy_data_mod
          jbasev = gis_stochy%ls_node(locl,2)
          jbasod = gis_stochy%ls_node(locl,3)
          if (mod(l,2) .eq. mod(jcap+1,2)) then
-            gis_stochy%kenorm_e(indlsev(jcap+1,l)) = 0.
+            gis_stochy%kenorm_e(indlsev(jcap+1,l,jbasev)) = 0.
          endif
          if (mod(l,2) .ne. mod(jcap+1,2)) then
-            gis_stochy%kenorm_o(indlsod(jcap+1,l)) = 0.
+            gis_stochy%kenorm_o(indlsod(jcap+1,l,jbasod)) = 0.
          endif
       enddo
 

@@ -26,6 +26,7 @@ endif()
 
 list(APPEND _stoch_phys_srcs
   kinddef.F90
+  indexing_utils.F90
   mpi_wrapper.F90
   halo_exchange.fv3.F90
   plumes.F90
