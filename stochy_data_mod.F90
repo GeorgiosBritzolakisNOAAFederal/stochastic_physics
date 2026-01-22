@@ -65,14 +65,13 @@ module stochy_data_mod
 
    real :: rnn1,gamma_sum
    integer :: nn,k,nm,stochlun,ierr,n
-   integer :: locl,indev,indod
+   integer :: locl,indev,indod,jbasod,jbasev
    integer :: l
    integer :: jcapin,varid1,varid2
    real(kind_dbl_prec),allocatable :: noise_e(:,:),noise_o(:,:)
    include 'netcdf.inc'
    stochlun=99
    levs=nlevs
-
    iret=0
 ! read in namelist
 
